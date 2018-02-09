@@ -7,8 +7,8 @@ import numpy as np
 import time
 
 def pycaffe_hidden(im_label):
-	prototxt_file = 'prototxt/8/hidden.prototxt'
-	weights_file = 'model/train_8.caffemodel'
+	prototxt_file = 'prototxt/32/hidden.prototxt'
+	weights_file = 'model/train_32.caffemodel'
 	if caffe.is_initialized() < 1:
 		caffe.init(prototxt_file, weights_file)
 		caffe.set_device(0)
@@ -29,8 +29,8 @@ def pycaffe_hidden(im_label):
 	return hidden_feat
 	
 def pycaffe_param(hidden_feat):
-	prototxt_file = 'prototxt/8/param.prototxt'
-	weights_file = 'model/train_8.caffemodel'
+	prototxt_file = 'prototxt/32/param.prototxt'
+	weights_file = 'model/train_32.caffemodel'
 	if caffe.is_initialized() < 2:
 		caffe.init(prototxt_file, weights_file)
 		caffe.set_device(0)
@@ -43,7 +43,7 @@ def pycaffe_param(hidden_feat):
 	caffe.save_model(param,'layer_name.txt','base.caffemodel','predict.caffemodel')
 
 def pycaffe_predict(im):
-	prototxt_file = 'prototxt/8/predict.prototxt'
+	prototxt_file = 'prototxt/32/predict.prototxt'
 	weights_file = 'predict.caffemodel'
 	if caffe.is_initialized() < 3:
 		caffe.init(prototxt_file, weights_file)
@@ -81,7 +81,7 @@ def pycaffe_predict(im):
 	return raw_score.astype('uint8')
 	
 if __name__ == '__main__':
-	caffe.base_model('model/train_8.caffemodel', 'base.txt')
+	caffe.base_model('model/train_32.caffemodel', 'base.txt')
 	
 
 	style_im = imread('jianbihua.png')

@@ -11,7 +11,7 @@ TOOL_SRCS := $(shell find tools -maxdepth 1 -name "*.cpp")
 PROTO_SRCS := $(wildcard src/caffe/proto/*.proto)
 PROTO_GEN_HEADER := ${PROTO_SRCS:.proto=.pb.h}
 PROTO_GEN_CC := ${PROTO_SRCS:.proto=.pb.cc}
-
+CXX=g++-5
 CXX_OBJS_ := ${CXX_SRCS:.cpp=.o}
 CU_OBJS_ := ${CU_SRCS:.cu=.o}
 PROTO_OBJS_ := ${PROTO_SRCS:.proto=.pb.o}
@@ -46,7 +46,7 @@ CUDA_INCLUDE_DIR := $(CUDA_DIR)/include
 CUDA_LIB_DIR := $(CUDA_DIR)/lib64
 
 INCLUDE_DIRS := /home/shen/caffe/thirdparty/cudnn/include . src /usr/local/include $(CUDA_INCLUDE_DIR)  include /home/shen/caffe/thirdparty/nccl/include /home/shen/caffe/thirdparty/blas/include /home/shen/caffe/thirdparty/mpich/include
-LIBRARY_DIRS := /home/shen/caffe/thirdparty/cudnn/lib64 . /usr/lib /usr/local/lib $(CUDA_LIB_DIR) /home/shen/caffe/thirdparty/nccl/lib /home/shen/caffe/thirdparty/blas/lib /home/shen/caffe/thirdparty/mpich/lib
+LIBRARY_DIRS := $(CUDA_LIB_DIR)
 LIBRARIES := glog gflags protobuf boost_system boost_filesystem boost_regex m  opencv_core opencv_highgui opencv_imgproc boost_thread stdc++  cudnn openblas
 LIBRARIES += cudart cublas curand nccl mpi
 WARNINGS := -Wall
@@ -87,16 +87,15 @@ test: $(TEST_BINS) $(GTEST_OBJS) $(GTEST_MAIN) $(OBJS)
 #---------------------------------------------- matlab ------------------------------------------------
 matcaffe: all
 	/usr/local/MATLAB/R2014b/bin/mex matlab/matcaffe.cpp \
-															     CXX="g++" \
-															     CXXFLAGS="\$$CXXFLAGS $(CXXFLAGS) $(COMMON_FLAGS) -Wno-uninitialized" \
-																	 CXXLIBS="\$$LIBRARIES 	-Wl,--whole-archive lib$(PROJECT).a -Wl,--no-whole-archive  $(LDFLAGS)" \
-																	 -output matlab/caffe
+	CXX="g++" \
+	CXXFLAGS="\$$CXXFLAGS $(CXXFLAGS) $(COMMON_FLAGS) -Wno-uninitialized" \
+        CXXLIBS="\$$LIBRARIES 	-Wl,--whole-archive lib$(PROJECT).a -Wl,--no-whole-archive  $(LDFLAGS)" \
+	-output matlab/caffe
 
 #---------------------------------------------  python -------------------------------------------------
-pycaffe: all
-	$(CXX) -I/home/shen/.local/lib/python2.7/site-packages/numpy/core/include/ $(CXXFLAGS)  $(COMMON_FLAGS) -shared  python/_pycaffe.cpp -lboost_python \
-	-I/usr/include/python2.7/  -Wl,--whole-archive lib$(PROJECT).a -Wl,--no-whole-archive  \
-	$(LDFLAGS) -fPIC  -o python/_pycaffe.so 
+pycaffe:
+	$(CXX) -std=c++11 -Wl,--unresolved-symbols=ignore-in-object-files $(CXXFLAGS)  $(COMMON_FLAGS) -shared  python/_pycaffe.cpp -lpython2.7 -lboost_python -lcaffe-nv -lprotobuf \
+	-I/usr/include/python2.7/ $(LDFLAGS) -fPIC  -o python/_pycaffe.so 
 #---------------------------------------------- link ---------------------------------------------------
 $(TEST_BINS): %.testbin : %.o $(OBJS) $(GTEST_OBJS) $(GTEST_MAIN)
 	@ echo LD -o $<

@@ -19,11 +19,13 @@ void entry_base_model(string whole_model_name, string layer_name_file)
 	NetParameter net_param;
 	NetParameter base_net_param;
 	ReadProtoFromBinaryFile(whole_model_name.c_str(), &net_param);
-
+        
+        for(int j=0; j <=net_param.layer_size(); ++j)
+          std::cerr<<"Found layer "<<net_param.layer(j).name()<<'\n';
 	
 	vector<string> layer_name_list;
-  layer_name_list.clear();
-  char layer_name[100];
+        layer_name_list.clear();
+        char layer_name[100];
  	FILE * fp = fopen(layer_name_file.c_str(),"rt");
  	if (fp == NULL)
  		throw std::runtime_error("base.txt is lost");
@@ -37,19 +39,21 @@ void entry_base_model(string whole_model_name, string layer_name_file)
  	
  	base_net_param.clear_layer();
  	for (int i = 0; i < layer_name_list.size(); ++i)
-  {
-  	int j=0;
-  	while(layer_name_list[i].compare(net_param.layer(j).name()))
-  	{ j++; if (j >= net_param.layer_size())  throw std::runtime_error("layer name not match");}
-  	std::cout<<"dumping layer "<<net_param.layer(j).name()<<'\n';
-  	base_net_param.add_layer()->CopyFrom(net_param.layer(j));
+        {
+          std::cout<<"Looking for layer "<<layer_name_list[i]<<'\n';
+          int j=0;
+          while(layer_name_list[i]!=net_param.layer(j).name())
+            j++;
+          if (j >= net_param.layer_size())
+            throw std::runtime_error("layer name not match");
+          std::cerr<<"dumping layer "<<net_param.layer(j).name()<<'\n';
+          base_net_param.add_layer()->CopyFrom(net_param.layer(j));
  	}
- 	
- 	
- 	WriteProtoToBinaryFile(base_net_param, "base.caffemodel");
+        
+        WriteProtoToBinaryFile(base_net_param, "base.caffemodel");
 }
 
-void entry_save_model(PyObject* weights_raw, string layer_name_file, string base_model_name, string predict_model_name) 
+void entry_save_model(PyObjecd_conv0t* weights_raw, string layer_name_file, string base_model_name, string predict_model_name) 
 {
 	PyListObject* weights_list = reinterpret_cast<PyListObject*>(weights_raw);
 	
@@ -87,10 +91,10 @@ void entry_save_model(PyObject* weights_raw, string layer_name_file, string base
     
   	PyArrayObject* weights = reinterpret_cast<PyArrayObject*>(weights_list->ob_item[i]);
   	int num = PyArray_DIMS(weights)[0];
-		int channels = PyArray_DIMS(weights)[1];
-		int height = PyArray_DIMS(weights)[2];
-		int width = PyArray_DIMS(weights)[3];
-  	Blob temp_blob;
+        int channels = PyArray_DIMS(weights)[1];
+        int height = PyArray_DIMS(weights)[2];
+        int width = PyArray_DIMS(weights)[3];
+        TBlob<float> temp_blob;
   	temp_blob.Reshape(num,channels,height,width);
   	
   	const float* const data_ptr = reinterpret_cast<const float* const >(PyArray_DATA(weights));
@@ -118,8 +122,8 @@ int entry_get_init_key()
 }
 void entry_set_device(int device_id) 
 {
-	Caffe::GPUs[0]=device_id;
-	Caffe::SetDevice(device_id);
+  // Caffe::GPUs[0]=device_id;
+  Caffe::SetDevice(device_id);
 }
 
 int entry_is_initialized() 
@@ -134,8 +138,8 @@ PyObject* entry_get_weights(int hnet)
 
 	
 	
-  const vector<shared_ptr<Layer > >& layers = net_->layers();
-  const vector<string>& layer_names = net_->layer_names();
+        const vector<shared_ptr<LayerBase > >& layers = net_->layers();
+        const vector<string>& layer_names = net_->layer_names();
 
   // Step 1: count the number of layers with weights
   int num_layers = 0;
@@ -167,7 +171,7 @@ PyObject* entry_get_weights(int hnet)
 			std::cout<<"layer weights size = "<<layer_blobs[j]->num()<<", "<<layer_blobs[j]->channels()<<", "<<layer_blobs[j]->height()<<'\n';
 			
       float* weights_ptr = reinterpret_cast<float*>(PyArray_DATA(blobs_list->ob_item[j]));		
-     	caffe_copy(layer_blobs[j]->count(), layer_blobs[j]->gpu_data(),weights_ptr);   
+      caffe_copy(layer_blobs[j]->count(), layer_blobs[j]->gpu_data<float>(),weights_ptr);   
     }   
 		
 		
@@ -183,50 +187,55 @@ PyObject* entry_get_weights(int hnet)
   return py_layers_;
 
 }
+
 void entry_init(char*model_file,char * weight_file) 
 {
 	shared_ptr<Net > net_;
 	NetParameter net_param;
-  ReadProtoFromTextFile(string(model_file), &net_param);
-  vector<shared_ptr<Blob > > net_input_blobs;
-  net_input_blobs.clear();
-  vector<string> net_input_blob_names;
-  net_input_blob_names.clear();
-  for (int i = 0; i < net_param.input_blob_size(); ++i)
-  {
-    const string& blob_name = net_param.input_blob(i).name();
-    net_input_blob_names.push_back(blob_name);
-    
-    int num = net_param.input_blob(i).num();
-    int channels = net_param.input_blob(i).channels();
-    int height = net_param.input_blob(i).height();
-    int width = net_param.input_blob(i).width();
-    shared_ptr<Blob > blob_pointer(new Blob(num, channels, height, width));
-    net_input_blobs.push_back(blob_pointer);
-  }
+
+        ReadProtoFromTextFile(string(model_file), &net_param);
+        vector<Blob*> net_input_blobs;
+        net_input_blobs.clear();
+        vector<string> net_input_blob_names;
+        net_input_blob_names.clear();
+#if TODO 
+        for (int i = 0; i < net_param.input_blob_size(); ++i)
+        {
+          const string& blob_name = net_param.input_blob(i).name();
+          net_input_blob_names.push_back(blob_name);
+          
+          int num = net_param.input_blob(i).num();
+          int channels = net_param.input_blob(i).channels();
+          int height = net_param.input_blob(i).height();
+          int width = net_param.input_blob(i).width();
+          shared_ptr<Blob > blob_pointer(new Blob(num, channels, height, width));
+          net_input_blobs.push_back(blob_pointer);
+        }
+#endif  
+//  Caffe::Get().set_bn_state("frozen");
+//  Caffe::Get().set_drop_state("fixed");
+//  Caffe::Get().set_reuse(true);
   
-  Caffe::set_bn_state("frozen");
-	Caffe::set_drop_state("fixed");
-	Caffe::set_reuse(true);
-	
-  net_.reset(new Net(net_param,net_input_blobs,net_input_blob_names));
+  net_.reset(new Net(net_param /*,net_input_blobs,net_input_blob_names
+                                */));
   
   
   net_param.Clear();
   ReadProtoFromBinaryFile(weight_file, &net_param);
   net_->CopyTrainedLayersFrom(net_param);
   
-	nets_.push_back(net_);
+  nets_.push_back(net_);
 
 
   init_key = nets_.size();  // NOLINT(caffe/random_fn)
 }
+
 PyObject* entry_forward(int hNet, PyObject* bottom_raw) 
 {
 	PyListObject* bottom = reinterpret_cast<PyListObject*>(bottom_raw);
 	shared_ptr<Net > net_ = nets_[hNet];
 	
-  const vector<shared_ptr<Blob > >& input_blobs = net_->input_blobs();
+        const vector<Blob*>& input_blobs = net_->input_blobs();
   if (bottom->ob_size != input_blobs.size()) 
    	throw std::runtime_error("Invalid input blob numbers");
 
@@ -251,12 +260,12 @@ PyObject* entry_forward(int hNet, PyObject* bottom_raw)
 		std::cout<<"num = "<<num<<", channels = "<<channels<<", height = "<<height<<", width = "<<width<<'\n';
 		
     const float* const data_ptr = reinterpret_cast<const float* const>(PyArray_DATA(elem));
-    caffe_copy(input_blobs[i]->count(), data_ptr, input_blobs[i]->mutable_gpu_data());
+    caffe_copy(input_blobs[i]->count(), data_ptr, input_blobs[i]->mutable_gpu_data<float>());
 
   }
 	
   net_->Forward();
- 	const vector<shared_ptr<Blob > >& output_blobs = net_->output_blobs();
+  const vector<Blob*>& output_blobs = net_->output_blobs();
   
 
   PyObject* top = PyList_New(output_blobs.size());
@@ -272,7 +281,7 @@ PyObject* entry_forward(int hNet, PyObject* bottom_raw)
 		
     float* data_ptr = reinterpret_cast<float*>(PyArray_DATA(top_list->ob_item[i]));
 
-    caffe_copy(output_blobs[i]->count(), output_blobs[i]->gpu_data(), data_ptr);
+    caffe_copy(output_blobs[i]->count(), output_blobs[i]->gpu_data<float>(), data_ptr);
   }
 
   return top;
@@ -281,8 +290,8 @@ PyObject* entry_forward(int hNet, PyObject* bottom_raw)
 BOOST_PYTHON_MODULE(_pycaffe)
 {
   import_array();
-  Caffe::GPUs.resize(1);
-  Caffe::GPUs[0]=0;
+//  Caffe::GPUs.resize(1);
+//  Caffe::GPUs[0]=0;
   nets_.clear();
   
   boost::python::def("reset", entry_reset);
